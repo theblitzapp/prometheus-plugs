@@ -79,7 +79,11 @@ defmodule Prometheus.PlugExporter do
       import Plug.Conn
       use Prometheus.Metric
 
+      require Logger
+
       def setup() do
+        Logger.info("PrometheusPlugs using registry #{inspect unquote(registry)}")
+
         Summary.declare(
           name: :telemetry_scrape_duration_seconds,
           help: "Scrape duration",
@@ -99,6 +103,7 @@ defmodule Prometheus.PlugExporter do
       end
 
       def call(conn, _opts) do
+        Logger.info("PrometheusPlugs: starting request for metric data")
         case conn.path_info do
           unquote(path) ->
             unquote(handle_auth(auth))
@@ -109,8 +114,11 @@ defmodule Prometheus.PlugExporter do
       end
 
       defp scrape_data(conn) do
+
         {content_type, format} = negotiate(conn)
         labels = [unquote(registry), content_type]
+
+        Logger.info("scrape_data/1 registry: #{inspect unquote(registry)}, labels: #{inspect labels}")
 
         scrape =
           Summary.observe_duration(
@@ -209,6 +217,11 @@ defmodule Prometheus.PlugExporter do
   defp send_metrics() do
     quote do
       {content_type, scrape} = scrape_data(conn)
+
+      Logger.info("PrometheusPlugs: sending metrics data
+        content_type: #{inspect content_type},
+        scrape: #{inspect scrape}"
+      )
 
       conn
       |> put_resp_content_type(content_type, nil)
